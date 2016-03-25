@@ -3,7 +3,6 @@ require 'bundler/setup'
 require 'optparse'
 require 'yaml'
 require 'twitter'
-require 'firebase'
 require 'oauth'
 
 require_relative 'tweet'
@@ -12,10 +11,12 @@ require_relative 'twegg'
 require_relative 'user'
 
 DEFAULT_CONFIG = 'config.yaml'
+DEFAULT_DATABASE = 'database.yaml'
 VERSION = '0.1.0'
-SLEEP_TIME = 60
+SLEEP_TIME = 30
 
 @config_file = DEFAULT_CONFIG
+@database_file = DEFAULT_DATABASE
 
 # Respond to console arguments
 # -n <filename> creates a new server. be careful!
@@ -41,7 +42,6 @@ def handle_arguments
     opts.on('-c', '--config filename', 'Start from a non-default config') do |filename|
       #shell_options[:config] = filename
       @config_file = filename
-      load_config
     end
   end.parse!
 end
@@ -65,14 +65,7 @@ def load_config
     conf.access_token     = @config['twitter_access_token'] if @config.key?('twitter_access_token')
     conf.access_token_secret = @config['twitter_access_token_secret'] if @config.key?('twitter_access_token_secret')
   end
-
-  # Create firebase config
-  $firebase = Firebase::Client.new(@config['firebase_url'], @config['firebase_secret'])
-  # Populate Twets database with information from database
-  #twets = @firebase.get("twet")
-  #twets.each.do |twet|
-
-  #fb_response = @firebase.set("newtest/blah", { :newtesty => 'new1337'})
+  puts "Logged into twitter as #{@twitter_client.user.screen_name}"
 
   @last_seen_tweet = @config['last_seen_tweet'] || 1
 
@@ -82,6 +75,25 @@ def save_config
   File.open(@config_file, 'w') do |file|
     file.write(YAML.dump(@config))
   end
+end
+
+def load_database
+  puts 'Loading database.'
+  abort("Database file doesn't exist.") unless File.exist?(@database_file)
+  database = YAML.load_file(@database_file)
+  @users = database[:user] || {}
+  @twets = database[:twet] || {}
+  @tweggs = database[:twegg] || {}
+  puts "Databased loaded. #{@users.length} users, #{@twets.length} twets, and #{@tweggs.length} tweggs."
+end
+
+def save_database
+  puts 'Saving database.'
+  File.open(@database_file, 'w') do |file|
+    database = {user: @users, twet: @twets, twegg: @tweggs}
+    file.write(YAML.dump(database))
+  end
+  puts "Databased saved #{@users.length} users, #{@twets.length} twets, and #{@tweggs.length} tweggs."
 end
 
 def rollover?
@@ -112,7 +124,8 @@ def respond_new_replies
       when 'egg'    # lets a new user get an egg to incubate
         puts "#{user} has received an egg."
         twegg = Twegg.new(user)
-        @twitter_client.update("@#{user} You have received a #{twegg.adjective} egg with #{twegg.color} #{twegg.pattern}! incubate or reject?")
+        @tweggs[user] = twegg
+        @twitter_client.update("@#{user} You have received a #{twegg.adjective} egg with #{twegg.color} #{twegg.pattern}!")
       else
         puts "The following tweet from #{user} was not understood: #{tweet.text}"
       end
@@ -126,6 +139,7 @@ end
 def cleanup
   puts 'Cleaning up.'
   @config['last_seen_tweet'] = @last_seen_tweet
+  save_database
   save_config
 end
 
@@ -135,9 +149,9 @@ end
 
 def main
   @shutdown = false
-
+  puts 'Starting main loop.'
   until @shutdown do
-    puts 'Starting main loop.'
+    puts "There are #{@users.length} users, #{@twets.length} twets, and #{@tweggs.length} tweggs."
     respond_new_replies
     puts "Going to sleep for #{SLEEP_TIME} seconds."
     sleep SLEEP_TIME
@@ -147,16 +161,18 @@ def main
   cleanup
 end
 
+# Signal handlers for command-line interface
 Signal.trap("INT") {
-  puts 'NeoTwets has been sent an interrupt signal.'
+  puts 'NeoTwets has been sent an interrupt signal, preparing shutdown.'
   @shutdown = true
 }
-
 Signal.trap("TERM") {
-  puts 'NeoTwets has been sent a terminate signal.'
+  puts 'NeoTwets has been sent a terminate signal, preparing shutdown.'
   @shutdown = true
 }
 
 handle_arguments
+load_config
+load_database
 main
 puts 'Exiting.'
