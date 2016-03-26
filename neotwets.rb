@@ -85,12 +85,13 @@ def load_database
   @twets = database[:twet] || {}
   @tweggs = database[:twegg] || {}
   puts "Databased loaded. #{@users.length} users, #{@twets.length} twets, and #{@tweggs.length} tweggs."
+  puts "Last save was on #{database[:last_saved].localtime}" if database[:last_saved]
 end
 
 def save_database
   puts 'Saving database.'
   File.open(@database_file, 'w') do |file|
-    database = {user: @users, twet: @twets, twegg: @tweggs}
+    database = {user: @users, twet: @twets, twegg: @tweggs, last_saved:Time.now}
     file.write(YAML.dump(database))
   end
   puts "Databased saved #{@users.length} users, #{@twets.length} twets, and #{@tweggs.length} tweggs."
@@ -125,7 +126,7 @@ def respond_new_replies
         puts "#{user} has received an egg."
         twegg = Twegg.new(user)
         @tweggs[user] = twegg
-        @twitter_client.update("@#{user} You have received a #{twegg.adjective} egg with #{twegg.color} #{twegg.pattern}!")
+        @twitter_client.update("@#{user} You have received a #{twegg.adjective} egg with #{twegg.color} #{twegg.pattern}!", in_reply_to_status:tweet)
       else
         puts "The following tweet from #{user} was not understood: #{tweet.text}"
       end
