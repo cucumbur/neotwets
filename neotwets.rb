@@ -29,6 +29,7 @@ def handle_arguments
 
     opts.on('-d', '--debug', 'Runs in debug mode (reroutes tweets to console') do
       @debug_mode = true
+      puts 'Running in debug mode.'
     end
 
     # opts.on('-n', 'Create a new server (overwrites any existing setup)') do |filename|
@@ -133,7 +134,7 @@ def respond_new_replies
         puts "#{user} has received an egg."
         twegg = Twegg.new(user)
         @tweggs[user] = twegg
-        @twitter_client.update("@#{user} You have received a #{twegg.adjective} egg with #{twegg.color} #{twegg.pattern}!", in_reply_to_status:tweet)
+        tweet("@#{user} You have received a #{twegg.adjective} egg with #{twegg.color} #{twegg.pattern}!", tweet)
       else
         puts "The following tweet from #{user} was not understood: #{tweet.text}"
       end
