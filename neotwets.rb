@@ -57,6 +57,9 @@ def load_config
   abort("Config file doesn't exist.") unless File.exist?(@config_file)
   @config = YAML.load_file(@config_file)
 
+  puts 'NeoTwets did not exit cleanly on last run.' unless @config['clean_exit']
+  @config['clean_exit'] = false
+  save_config
   # Create twitter config
   @twitter_client = Twitter::REST::Client.new do |conf|
     conf.consumer_key     = @config['twitter_consumer_key']
@@ -65,7 +68,7 @@ def load_config
     conf.access_token     = @config['twitter_access_token'] if @config.key?('twitter_access_token')
     conf.access_token_secret = @config['twitter_access_token_secret'] if @config.key?('twitter_access_token_secret')
   end
-  puts "Logged into twitter as #{@twitter_client.user.screen_name}"
+  puts "Logged into twitter as #{@twitter_client.user.screen_name}."
 
   @last_seen_tweet = @config['last_seen_tweet'] || 1
 
@@ -85,7 +88,11 @@ def load_database
   @twets = database[:twet] || {}
   @tweggs = database[:twegg] || {}
   puts "Databased loaded. #{@users.length} users, #{@twets.length} twets, and #{@tweggs.length} tweggs."
-  puts "Last save was on #{database[:last_saved].localtime}" if database[:last_saved]
+  if database[:last_saved]
+    puts "Last save was on #{database[:last_saved].localtime}"
+  else
+    puts 'NeoTwets is working with a new database.'
+  end
 end
 
 def save_database
@@ -94,7 +101,7 @@ def save_database
     database = {user: @users, twet: @twets, twegg: @tweggs, last_saved:Time.now}
     file.write(YAML.dump(database))
   end
-  puts "Databased saved #{@users.length} users, #{@twets.length} twets, and #{@tweggs.length} tweggs."
+  puts "Databased saved. #{@users.length} users, #{@twets.length} twets, and #{@tweggs.length} tweggs."
 end
 
 def rollover?
@@ -141,6 +148,7 @@ def cleanup
   puts 'Cleaning up.'
   @config['last_seen_tweet'] = @last_seen_tweet
   save_database
+  @config['clean_exit'] = true
   save_config
 end
 
