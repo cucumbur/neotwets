@@ -3,7 +3,6 @@ require 'bundler/setup'
 require 'optparse'
 require 'yaml'
 require 'twitter'
-require 'oauth'
 
 require_relative 'tweet'
 require_relative 'twet'
@@ -129,7 +128,7 @@ def check_events
   time_to_delete= 60 * 60 * 12
   @tweggs.each do |user, twegg|
     if twegg.incubated && (twegg.incubated_on + time_to_hatch) < Time.now
-      puts 'This is where a twegg would be hatching.'
+      hatch_twegg(twegg)
     elsif (Time.now - twegg.created_on) > (time_to_warn + time_to_delete)
       puts 'This is where you delete a twegg.'
     elsif (Time.now - twegg.created_on) > time_to_warn
@@ -138,11 +137,24 @@ def check_events
   end
 end
 
+def hatch_twegg(twegg)
+  owner = twegg.owner
+  puts "#{owner}'s twegg is hatching!"
+  twet = Twet.new(owner)
+  @twets[owner] = twet
+  @tweggs.delete(owner)
+  tweet "@#{owner} Your twegg hatched! It is a #{twet.trait} #{twet.color} #{twet.species} with a #{twet.personality}."
+end
+
 def respond_new_replies
   puts "Checking for new replies since tweet #{@last_seen_tweet}."
   mentions = @twitter_client.mentions({since_id: @last_seen_tweet, count: 20})
-  puts 'No new replies.' and return if mentions.size == 0
+  if mentions.size == 0
+    puts 'No new replies.'
+    return
+  end
   puts "#{mentions.size} new replies."
+
   mentions.each do |tweet|
     user = tweet.user.screen_name
     puts "New reply found from @#{user}"
@@ -172,12 +184,25 @@ def respond_new_replies
         end
       when 'reject'
         if @tweggs[user]
+          puts "#{user} rejected their twegg."
           @tweggs.delete(user)
           world = YAML.load_file('world.yaml')
           rejection = world['twegg_rejection_phrases'].sample
           tweet "@#{user} You #{rejection} Try again in 2 hours.", tweet #TODO actually make there a minimum of two hours to try again
         else
-          puts 'User tried to reject a twegg but did not have one.'
+          puts "#{user} tried to reject a twegg but did not have one."
+        end
+      when 'name'
+        unless @twets[user]
+          puts "#{user} tried to name a a twet but does not have one."
+          return
+        end
+        if @twets[user].name == "#{user}'s Twet"    # let them rename it only if its the default name
+          puts "#{user} named their twet #{tokens[2]}."
+          @twets[user].name = tokens[2]
+          tweet ".@#{user} is now the proud parent of #{@twets[user].name} the #{@twets[user].species}!"
+        else
+          puts "#{user} tried to name their twet but it was already named.."
         end
       else
         puts "The following tweet from #{user} was not understood: #{tweet.text}"
