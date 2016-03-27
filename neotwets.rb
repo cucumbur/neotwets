@@ -10,10 +10,12 @@ require_relative 'twet'
 require_relative 'twegg'
 require_relative 'user'
 
-DEFAULT_CONFIG = 'config.yaml'
-DEFAULT_DATABASE = 'database.yaml'
+DEFAULT_CONFIG    = 'config.yaml'
+DEFAULT_WORLD     = 'world.yaml'
+DEFAULT_DATABASE  = 'database.yaml'
 VERSION = '0.1.0'
-SLEEP_TIME = 30
+SLEEP_TIME = 60         # the amount of time, in seconds, to wait in between running the main loop
+CHECK_EVENT_TIME = 120  # the amount of time, in seconds, to wait in between checking for events to respond to
 
 @config_file = DEFAULT_CONFIG
 @database_file = DEFAULT_DATABASE
@@ -60,7 +62,7 @@ def load_config
 
   puts 'NeoTwets did not exit cleanly on last run.' unless @config['clean_exit']
   @config['clean_exit'] = false
-  save_config
+  save_config :silent
   # Create twitter config
   @twitter_client = Twitter::REST::Client.new do |conf|
     conf.consumer_key     = @config['twitter_consumer_key']
@@ -75,7 +77,8 @@ def load_config
 
 end
 
-def save_config
+def save_config(silent = nil)
+  puts 'Saving configuration file.' unless silent
   File.open(@config_file, 'w') do |file|
     file.write(YAML.dump(@config))
   end
@@ -85,6 +88,7 @@ def load_database
   puts 'Loading database.'
   abort("Database file doesn't exist.") unless File.exist?(@database_file)
   database = YAML.load_file(@database_file)
+  database ||= {}
   @users = database[:user] || {}
   @twets = database[:twet] || {}
   @tweggs = database[:twegg] || {}
@@ -118,9 +122,28 @@ def daily_rollover
   end
 end
 
+def check_events
+  # go through all tweggs, sees if they are incubated, and hatches them if its been an hour
+  time_to_hatch = 120
+  time_to_warn  = 60 * 60 * 48
+  time_to_delete= 60 * 60 * 12
+  @tweggs.each do |user, twegg|
+    if twegg.incubated && (twegg.incubated_on + time_to_hatch) < Time.now
+      puts 'This is where a twegg would be hatching.'
+    elsif (Time.now - twegg.created_on) > (time_to_warn + time_to_delete)
+      puts 'This is where you delete a twegg.'
+    elsif (Time.now - twegg.created_on) > time_to_warn
+      puts 'This is where you would warn that you will delete a twegg soon'
+    end
+  end
+end
+
 def respond_new_replies
   puts "Checking for new replies since tweet #{@last_seen_tweet}."
-  @twitter_client.mentions({since_id: @last_seen_tweet, count: 20}).each do |tweet|
+  mentions = @twitter_client.mentions({since_id: @last_seen_tweet, count: 20})
+  puts 'No new replies.' and return if mentions.size == 0
+  puts "#{mentions.size} new replies."
+  mentions.each do |tweet|
     user = tweet.user.screen_name
     puts "New reply found from @#{user}"
     if tweet.in_reply_to_user_id == @twitter_client.user.id
@@ -129,16 +152,36 @@ def respond_new_replies
       case command
       when 'status' # gives user information about current state of twet
         puts "#{user} requested their status."
-        @twitter_client.update("@#{user} Not right now")
+        tweet "@#{user} Not right now"
       when 'egg'    # lets a new user get an egg to incubate
-        puts "#{user} has received an egg."
-        twegg = Twegg.new(user)
-        @tweggs[user] = twegg
-        tweet("@#{user} You have received a #{twegg.adjective} egg with #{twegg.color} #{twegg.pattern}!", tweet)
+        if @tweggs[user]
+          puts 'User requested twegg, but they already had one.'
+        else
+          puts "#{user} has received an egg."
+          twegg = Twegg.new(user)
+          @tweggs[user] = twegg
+          tweet "@#{user} You have received a #{twegg.adjective} egg with #{twegg.color} #{twegg.pattern}!", tweet
+        end
+      when 'incubate'
+        if @tweggs[user]
+          puts "#{user} has incubated their twegg."
+          tweet "@#{user} You've put your twegg in the incubation chamber. It should hatch soon!", tweet
+          @tweggs[user].incubated = true
+        else
+          puts 'User attempted to incubate but had no twegg.'
+        end
+      when 'reject'
+        if @tweggs[user]
+          @tweggs.delete(user)
+          world = YAML.load_file('world.yaml')
+          rejection = world['twegg_rejection_phrases'].sample
+          tweet "@#{user} You #{rejection} Try again in 2 hours.", tweet #TODO actually make there a minimum of two hours to try again
+        else
+          puts 'User tried to reject a twegg but did not have one.'
+        end
       else
         puts "The following tweet from #{user} was not understood: #{tweet.text}"
       end
-      #@twitter_client.update("I got tweeted at by @#{tweet.user.screen_name}!")
       @last_seen_tweet = tweet.id if tweet.id > @last_seen_tweet
     end
 
@@ -158,11 +201,14 @@ def new_twet_id
 end
 
 def main
+  time_since_check_events = CHECK_EVENT_TIME
   @shutdown = false
   puts 'Starting main loop.'
   until @shutdown do
     puts "There are #{@users.length} users, #{@twets.length} twets, and #{@tweggs.length} tweggs."
+    check_events and time_since_check_events = 0 if time_since_check_events >= CHECK_EVENT_TIME
     respond_new_replies
+    save_config :silent
     puts "Going to sleep for #{SLEEP_TIME} seconds."
     sleep SLEEP_TIME
 
