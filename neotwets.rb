@@ -16,6 +16,9 @@ VERSION = '0.1.0'
 SLEEP_TIME = 60         # the amount of time, in seconds, to wait in between running the main loop
 CHECK_EVENT_TIME = 120  # the amount of time, in seconds, to wait in between checking for events to respond to
 
+MAX_FONDNESS = 10
+
+
 @config_file = DEFAULT_CONFIG
 @database_file = DEFAULT_DATABASE
 
@@ -131,6 +134,7 @@ def check_events
   time_to_hatch = 60 * 10
   time_to_warn  = 60 * 60 * 48
   time_to_delete= 60 * 60 * 12
+  # Twegg check
   @tweggs.each do |user, twegg|
     if twegg.incubated && (twegg.incubated_on + time_to_hatch) < Time.now
       hatch_twegg(twegg)
@@ -139,6 +143,11 @@ def check_events
     elsif (Time.now - twegg.created_on) > time_to_warn
       puts 'This is where you would warn that you will delete a twegg soon'
     end
+  end
+  # Twet checks
+  @twets.each do |owner, twet|
+    # Fondness check
+    tweet "@#{owner} #{twet.name} really likes you!" if twet.fondness == MAX_FONDNESS
   end
 end
 
@@ -167,9 +176,6 @@ def respond_new_replies
       tokens = tweet.full_text.split(" ")
       command = tokens[1].downcase
       case command
-      when 'status' # gives user information about current state of twet
-        puts "#{user} requested their status."
-        tweet "@#{user} Not right now"
       when 'egg'    # lets a new user get an egg to incubate
         if @tweggs[user]
           puts 'User requested twegg, but they already had one.'
@@ -207,7 +213,23 @@ def respond_new_replies
           @twets[user].name = tokens[2]
           tweet ".@#{user} is now the proud parent of #{@twets[user].name} the #{@twets[user].species}!"
         else
-          puts "#{user} tried to name their twet but it was already named.."
+          puts "#{user} tried to name their twet but it was already named."
+        end
+      when 'feed'
+        if @twets[user].hungry
+          puts "#{user} fed their twet."
+          @twets[user].hungry = false
+          @twets[user].fondness += 1 unless @twets[user].fondness == MAX_FONDNESS
+        elsif
+          puts "#{user} tried to feed their twet but failed for some reason."
+        end
+      when 'status' # gives user information about current state of twet
+        if @twets[user]
+          twet = @twets[user]
+          if twet.hungry then hungry_stmt = 'is hungry'  else hungry_stmt = "isn't hungry" end
+          tweet "@#{user} #{twet.name} is a level #{twet.level} #{twet.species} with #{twet.experience} exp and #{hungry_stmt}."
+        else
+          puts "#{user} tried to get their status but they don't have a twet.."
         end
       else
         puts "The following tweet from #{user} was not understood: #{tweet.text}"
@@ -242,7 +264,6 @@ def main
     save_config :silent
     puts "Going to sleep for #{SLEEP_TIME} seconds."
     sleep SLEEP_TIME
-
   end
 
   cleanup
