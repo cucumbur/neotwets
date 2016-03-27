@@ -230,7 +230,7 @@ def respond_new_replies
         if @twets[user]
           twet = @twets[user]
           if twet.hungry then hungry_stmt = 'is hungry'  else hungry_stmt = "isn't hungry" end
-          tweet "@#{user} #{twet.name} is a level #{twet.level} #{twet.species} with #{twet.experience} exp and #{hungry_stmt}."
+          tweet "@#{user} #{twet.name} is a level #{twet.level} #{twet.species} with #{twet.experience} exp and #{hungry_stmt}.", tweet
         else
           puts "#{user} tried to get their status but they don't have a twet.."
         end
