@@ -154,9 +154,12 @@ end
 def hatch_twegg(twegg)
   owner = twegg.owner
   puts "#{owner}'s twegg is hatching!"
-  twet = Twet.new(owner)
+  twet = Twet.new(owner, @config['new_twet_id'])
+  @config['new_twet_id'] += 1
   @twets[owner] = twet
   @tweggs.delete(owner)
+  # Now that they have a twet, create a database entry for the user
+  @users[owner] = User.new(owner, twet.id)
   tweet "@#{owner} Your twegg hatched! It is a #{twet.trait} #{twet.color} #{twet.species} with a #{twet.personality}."
 end
 
