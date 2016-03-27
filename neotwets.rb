@@ -150,7 +150,14 @@ def check_events
   # Twet checks
   @twets.each do |owner, twet|
     # Fondness check
-    tweet "@#{owner} #{twet.name} really likes you!" if twet.fondness == MAX_FONDNESS
+    #tweet "@#{owner} #{twet.name} really likes you!" if twet.fondness == MAX_FONDNESS #TODO Don't enable this until a feature is implemented so it won't repeatedly badger the user
+    # Level up
+    if twet.level_up?
+      puts "#{owner}'s twet #{twet.name} is leveling up to lvl #{twet.level.next}"
+      twet.level_up
+      tweet "@#{owner} #{twet.name} has grown to level #{twet.level}!"
+    end
+
   end
 end
 

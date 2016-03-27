@@ -15,4 +15,16 @@ class Twet
     @personality = data['personality'].sample
     @fondness = 5
   end
+
+  def level_up?; (@experience) >= exp_to_next_level end
+
+  def level_up
+    @experience -= exp_to_next_level
+    @level += 1
+  end
+
+  private
+
+  def exp_to_next_level; (2 ** (2 + @level.next)) end
+
 end
