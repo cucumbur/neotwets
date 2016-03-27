@@ -12,9 +12,9 @@ require_relative 'user'
 DEFAULT_CONFIG    = 'config.yaml'
 DEFAULT_WORLD     = 'world.yaml'
 DEFAULT_DATABASE  = 'database.yaml'
-VERSION = '0.1.0'
-SLEEP_TIME = 60         # the amount of time, in seconds, to wait in between running the main loop
-CHECK_EVENT_TIME = 120  # the amount of time, in seconds, to wait in between checking for events to respond to
+VERSION = '0.1.1'
+SLEEP_TIME = 120         # the amount of time, in seconds, to wait in between running the main loop
+CHECK_EVENT_TIME = 240  # the amount of time, in seconds, to wait in between checking for events to respond to
 
 MAX_FONDNESS = 10
 
