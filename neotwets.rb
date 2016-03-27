@@ -58,7 +58,7 @@ def load_config
   puts 'Loading and applying config file.'
   abort("Config file doesn't exist.") unless File.exist?(@config_file)
   @config = YAML.load_file(@config_file)
-
+  @config['last_update'] = Time.now unless @config['last_update']
   puts 'NeoTwets did not exit cleanly on last run.' unless @config['clean_exit']
   @config['clean_exit'] = false
   save_config :silent
@@ -109,21 +109,26 @@ def save_database
 end
 
 def rollover?
-   Time.new.yday != @last_update.yday
+   Time.new.yday != @config['last_update'].yday
 end
 
 # Updates any daily features such as hungriness
 def daily_rollover
+  @config['last_update'] = Time.now
   puts 'Enacting daily rollover.'
-  # Make all Twets hungry
-  @twets.each do |twet|
+  @twets.each do |owner, twet|
+    # All pets that are hungry lose fondness
+    puts 'Making all hungry twets lose fondness.'
+    twet.fondness -= 1 if twet.hungry
+    # Make all Twets hungry
+    puts 'Making all twets hungry.'
     twet.hungry = true
   end
 end
 
 def check_events
   # go through all tweggs, sees if they are incubated, and hatches them if its been an hour
-  time_to_hatch = 120
+  time_to_hatch = 60 * 10
   time_to_warn  = 60 * 60 * 48
   time_to_delete= 60 * 60 * 12
   @tweggs.each do |user, twegg|
@@ -233,6 +238,7 @@ def main
     puts "There are #{@users.length} users, #{@twets.length} twets, and #{@tweggs.length} tweggs."
     check_events and time_since_check_events = 0 if time_since_check_events >= CHECK_EVENT_TIME
     respond_new_replies
+    daily_rollover if rollover?
     save_config :silent
     puts "Going to sleep for #{SLEEP_TIME} seconds."
     sleep SLEEP_TIME
