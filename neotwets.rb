@@ -117,6 +117,9 @@ end
 
 # Updates any daily features such as hungriness
 def daily_rollover
+  # The "fortune" is like a randomly selected message of the day to let people know when rollover occurs
+  fortune = YAML.load_file('world.yaml')['fortune'].sample
+  tweet "A new day dawns in NeoTwetopia. #{fortune}"
   @config['last_update'] = Time.now
   puts 'Enacting daily rollover.'
   @twets.each do |owner, twet|
