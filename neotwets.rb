@@ -103,13 +103,13 @@ def load_database
   end
 end
 
-def save_database
-  puts 'Saving database.'
+def save_database(silent = nil)
+  puts 'Saving database.' unless silent
   File.open(@database_file, 'w') do |file|
     database = {user: @users, twet: @twets, twegg: @tweggs, last_saved:Time.now}
     file.write(YAML.dump(database))
   end
-  puts "Databased saved. #{@users.length} users, #{@twets.length} twets, and #{@tweggs.length} tweggs."
+  puts "Databased saved. #{@users.length} users, #{@twets.length} twets, and #{@tweggs.length} tweggs." unless silent
 end
 
 def rollover?
@@ -238,12 +238,14 @@ def respond_new_replies
           puts "#{user} tried to feed their twet but failed for some reason."
         end
       when 'status' # gives user information about current state of twet
-        if @twets[user]
+        if twegg = @tweggs[user]
+          tweet "@#{user} You have an unhatched #{twegg.adjective} twegg with #{twegg.color} #{twegg.pattern}. incubate?", tweet
+        elsif @twets[user]
           twet = @twets[user]
           if twet.hungry then hungry_stmt = 'is hungry'  else hungry_stmt = "isn't hungry" end
           tweet "@#{user} #{twet.name} is a level #{twet.level} #{twet.species} with #{twet.experience} exp and #{hungry_stmt}.", tweet
         else
-          puts "#{user} tried to get their status but they don't have a twet.."
+          puts "#{user} tried to get their status but they don't have a twet."
         end
       else
         puts "The following tweet from #{user} was not understood: #{tweet.text}"
@@ -267,24 +269,26 @@ def new_twet_id
 end
 
 def main
-  time_since_check_events = CHECK_EVENT_TIME
-  time_since_check_tweets = CHECK_TWEETS_TIME
+  first_run = true
+  checked_tweets_time = Time.now
+  checked_events_time = Time.now
   @shutdown = false
   puts 'Starting main loop.'
   until @shutdown do
-    if time_since_check_tweets >= CHECK_TWEETS_TIME
+    if first_run || ((Time.now - checked_tweets_time) >= CHECK_TWEETS_TIME)
       puts "There are #{@users.length} users, #{@twets.length} twets, and #{@tweggs.length} tweggs."
       respond_new_replies
-      time_since_check_tweets = 0
+      checked_tweets_time = Time.now
     end
 
-    if time_since_check_events >= CHECK_EVENT_TIME
+    if first_run || ((Time.now - checked_events_time) >= CHECK_EVENT_TIME)
       check_events
-      time_since_check_events = 0
+      checked_events_time = Time.now
     end
+    first_run = false
     daily_rollover if rollover?
     save_config :silent
-    save_database
+    save_database :silent
     #puts "Going to sleep for #{SLEEP_TIME} seconds."
     sleep SLEEP_TIME
   end
