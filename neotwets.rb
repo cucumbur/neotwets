@@ -13,7 +13,8 @@ DEFAULT_CONFIG    = 'config.yaml'
 DEFAULT_WORLD     = 'world.yaml'
 DEFAULT_DATABASE  = 'database.yaml'
 VERSION = '0.1.1'
-SLEEP_TIME = 120         # the amount of time, in seconds, to wait in between running the main loop
+SLEEP_TIME = 20         # the amount of time, in seconds, to wait in between running the main loop
+CHECK_TWEETS_TIME = 60
 CHECK_EVENT_TIME = 240  # the amount of time, in seconds, to wait in between checking for events to respond to
 
 MAX_FONDNESS = 10
@@ -267,16 +268,24 @@ end
 
 def main
   time_since_check_events = CHECK_EVENT_TIME
+  time_since_check_tweets = CHECK_TWEETS_TIME
   @shutdown = false
   puts 'Starting main loop.'
   until @shutdown do
-    puts "There are #{@users.length} users, #{@twets.length} twets, and #{@tweggs.length} tweggs."
-    check_events and time_since_check_events = 0 if time_since_check_events >= CHECK_EVENT_TIME
-    respond_new_replies
+    if time_since_check_tweets >= CHECK_TWEETS_TIME
+      puts "There are #{@users.length} users, #{@twets.length} twets, and #{@tweggs.length} tweggs."
+      respond_new_replies
+      time_since_check_tweets = 0
+    end
+
+    if time_since_check_events >= CHECK_EVENT_TIME
+      check_events
+      time_since_check_events = 0
+    end
     daily_rollover if rollover?
     save_config :silent
     save_database
-    puts "Going to sleep for #{SLEEP_TIME} seconds."
+    #puts "Going to sleep for #{SLEEP_TIME} seconds."
     sleep SLEEP_TIME
   end
 
