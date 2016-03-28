@@ -19,7 +19,6 @@ CHECK_EVENT_TIME = 240  # the amount of time, in seconds, to wait in between che
 
 MAX_FONDNESS = 10
 
-
 @config_file = DEFAULT_CONFIG
 @database_file = DEFAULT_DATABASE
 
@@ -74,7 +73,13 @@ def load_config
     conf.access_token     = @config['twitter_access_token'] if @config.key?('twitter_access_token')
     conf.access_token_secret = @config['twitter_access_token_secret'] if @config.key?('twitter_access_token_secret')
   end
-  puts "Logged into twitter as #{@twitter_client.user.screen_name}."
+  begin
+    @twitter_name = @twitter_client.user.screen_name
+  rescue Twitter::Error::TooManyRequests => error
+    sleep error.rate_limit.reset_in + 1
+    retry
+  end
+  puts "Logged into twitter as #{@twitter_name}."
 
   @last_seen_tweet = @config['last_seen_tweet'] || 1
 
@@ -179,7 +184,12 @@ end
 
 def respond_new_replies
   puts "Checking for new replies since tweet #{@last_seen_tweet}."
-  mentions = @twitter_client.mentions({since_id: @last_seen_tweet, count: 20})
+  begin
+    mentions = @twitter_client.mentions({since_id: @last_seen_tweet, count: 20})
+  rescue Twitter::Error::TooManyRequests => error
+    sleep error.rate_limit.reset_in + 1
+    retry
+  end
   if mentions.size == 0
     puts 'No new replies.'
     return
@@ -189,7 +199,8 @@ def respond_new_replies
   mentions.each do |tweet|
     user = tweet.user.screen_name
     puts "New reply found from @#{user}"
-    if tweet.in_reply_to_user_id == @twitter_client.user.id
+
+    if tweet.in_reply_to_user_id == @twitter_name
       tokens = tweet.full_text.split(" ")
       command = tokens[1].downcase
       case command
@@ -251,6 +262,7 @@ def respond_new_replies
         else
           puts "#{user} tried to get their status but they don't have a twet."
         end
+      when 'relationship' #gives user information about the relationship between them and their twet
       else
         puts "The following tweet from #{user} was not understood: #{tweet.text}"
       end
