@@ -275,6 +275,7 @@ def main
     respond_new_replies
     daily_rollover if rollover?
     save_config :silent
+    save_database
     puts "Going to sleep for #{SLEEP_TIME} seconds."
     sleep SLEEP_TIME
   end
