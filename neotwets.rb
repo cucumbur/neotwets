@@ -134,18 +134,21 @@ def daily_rollover
 end
 
 def check_events
+  puts 'Checking events.'
   # go through all tweggs, sees if they are incubated, and hatches them if its been an hour
-  time_to_hatch = 60 * 10
-  time_to_warn  = 60 * 60 * 48
-  time_to_delete= 60 * 60 * 12
+  time_to_hatch = 60 * 30
+  time_to_warn  = 60 * 60 * 24
+  time_to_delete= 60 * 60 * 36
   # Twegg check
   @tweggs.each do |user, twegg|
     if twegg.incubated && (twegg.incubated_on + time_to_hatch) < Time.now
       hatch_twegg(twegg)
     elsif (Time.now - twegg.created_on) > (time_to_warn + time_to_delete)
-      puts 'This is where you delete a twegg.'
+      @tweggs.remove(user)
+      puts "#{user} had their twegg deleted."
     elsif (Time.now - twegg.created_on) > time_to_warn
-      puts 'This is where you would warn that you will delete a twegg soon'
+      puts "#{user} has been warned that their twegg will be removed soon."
+      tweet "@#{user} If you don't incubate your egg, it will be gone in #{(time_to_delete / (60 * 60)).to_i} hours."
     end
   end
   # Twet checks
@@ -204,6 +207,7 @@ def respond_new_replies
           puts "#{user} has incubated their twegg."
           tweet "@#{user} You've put your twegg in the incubation chamber. It should hatch soon!", tweet
           @tweggs[user].incubated = true
+          @tweggs[user].incubated_on = Time.now
         else
           puts 'User attempted to incubate but had no twegg.'
         end
