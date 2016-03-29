@@ -18,7 +18,7 @@ CHECK_TWEETS_TIME = 60
 CHECK_EVENT_TIME = 240  # the amount of time, in seconds, to wait in between checking for events to respond to
 
 MAX_FONDNESS = 10
-
+ALLOWANCE_AMOUNT = 50
 @config_file = DEFAULT_CONFIG
 @database_file = DEFAULT_DATABASE
 
@@ -288,6 +288,49 @@ def respond_new_replies
         else
           puts "#{user} tried to check their wallet but they aren't a user."
         end
+          # gambling features
+      when 'dice' # @neotwetsdev dice bet (neocoins) on (1-6)
+        if twuser = @users[user] && tokens.size >= 4
+          puts "#{user} is rolling the dice."
+          bet = [tokens[3].to_i, twuser.neocoin].min
+          twuser.neocoin -= bet
+          tokens[5].to_i.between?(1,6) ? guess = tokens[5].to_i : guess = rand(6)+1
+          roll = rand(6)+1
+          if roll == guess
+            twuser.neocoin += (bet * 6)
+            "@#{user} You bet on #{guess} and the die landed on #{roll}. You win #{(bet * 5)} neocoin!", tweet
+          else
+            "@#{user} You bet on #{guess} but the die landed on #{roll}. You lost #{(bet)} neocoin...", tweet
+          end
+        else
+          puts "#{user} tried to roll the dice but isn't an actual user."
+        end
+      when 'coinflip' # @neotwetsdev coinflip bet (neocoins) on (heads,tails)
+        if twuser = @users[user] && tokens.size >= 4
+          puts "#{user} is flipping a coin."
+          bet = [tokens[3].to_i, twuser.neocoin].min
+          twuser.neocoin -= bet
+          ['heads, tails'].include? tokens[5].downcase ? guess = tokens[5].downcase : guess = ['heads', 'tails'].sample
+          coin = ['heads', 'tails'].sample
+          if guess == coin
+            twuser.neocoin += (bet * 2)
+            "@#{user} You bet on #{guess} and the coin landed on #{coin}. You win #{(bet)} neocoin!", tweet
+          else
+            "@#{user} You bet on #{guess} but the coin landed on #{coin}... You lose #{(bet)} neocoin.", tweet
+          end
+        else
+          puts "#{user} tried to flip a coin but isn't an actual user."
+        end
+      when 'allowance'
+        if twuser = @users[user] && !(twuser.gotten_allowance)
+          puts "#{user} is collecting their allowance."
+          given = ALLOWANCE_AMOUNT + rand(-10..10)
+          twuser.neocoin += given
+          "@#{user} You collected #{given} nocoin as allowance!", tweet
+        else
+          puts "#{user} tried to collect allowance but aren't a real user."
+        end
+
       else
         puts "The following tweet from #{user} was not understood: #{tweet.text}"
       end
