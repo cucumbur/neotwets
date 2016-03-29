@@ -304,7 +304,7 @@ def respond_new_replies
       when 'dice' # @neotwetsdev dice bet (neocoins) on (1-6)
         if (twuser = @users[user]) && tokens.size >= 4
           puts "#{user} is rolling the dice."
-          bet = [tokens[3].to_i, twuser.neocoin].min
+          bet = [tokens[3].to_i.abs, twuser.neocoin].min
           twuser.neocoin -= bet
           tokens[5].to_i.between?(1,6) ? guess = tokens[5].to_i : guess = rand(6)+1
           roll = rand(6)+1
@@ -320,7 +320,7 @@ def respond_new_replies
       when 'coinflip' # @neotwetsdev coinflip bet (neocoins) on (heads,tails)
         if (twuser = @users[user]) && tokens.size >= 4
           puts "#{user} is flipping a coin."
-          bet = [tokens[3].to_i, twuser.neocoin].min
+          bet = [tokens[3].to_i.abs, twuser.neocoin].min
           twuser.neocoin -= bet
           ['heads, tails'].include? tokens[5].downcase ? guess = tokens[5].downcase : guess = ['heads', 'tails'].sample
           coin = ['heads', 'tails'].sample
@@ -347,7 +347,27 @@ def respond_new_replies
         else
           puts "#{user} tried to collect allowance but aren't a real user."
         end
+      when 'donate' # donate <# coin> to @<username>
+        if (twuser = @users[user]) && tokens.size >= 5
+          tokens[4].start_with?('@') ? recipient = tokens[4][1..-1] : recipient = tokens[4]
+          if (twrecipient = @users[recipient])
+            puts "#{user} is donating to  #{recipient}."
+            donation = [tokens[2].to_i.abs, twuser.neocoin].min
+            twuser.neocoin -= donation
+            twrecipient.neocoin += donation
+            tweet "@#{recipient} You have a generous friend! @#{user} donated #{donation} neocoin to you.", tweet
+            # 1 in 100 donations, the donation fairy will bless the person who donated
+            if rand(100) == 50
+              puts 'The generation fairy has appeared!'
+              blessing = rand(500..2000)
+              twuser.neocoin += blessing
+              tweet "@#{user} The donation fairy has blessed you with #{blessing} neocoin for your generosity. Nice!", tweet
+            end
+          else
+            puts "#{user} tried to donate to #{recipient} but they don't exist."
+          end
 
+        end
       else
         puts "The following tweet from #{user} was not understood: #{tweet.text}"
       end
