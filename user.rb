@@ -1,5 +1,5 @@
 class User
-  attr_accessor :name, :twet, :neocoin, :gotten_allowance
+  attr_accessor :name, :twet, :neocoin, :got_allowance
   attr_reader :playing_since
   def initialize(name, twet_id)
     @name = name
