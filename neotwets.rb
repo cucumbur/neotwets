@@ -75,6 +75,7 @@ def load_config
   end
   begin
     @twitter_name = @twitter_client.user.screen_name
+    @twitter_id = @twitter_client.user.id
   rescue Twitter::Error::TooManyRequests => error
     sleep error.rate_limit.reset_in + 1
     retry
@@ -148,8 +149,9 @@ def check_events
   @tweggs.each do |user, twegg|
     if twegg.incubated && (twegg.incubated_on + time_to_hatch) < Time.now
       hatch_twegg(twegg)
+
     elsif (Time.now - twegg.created_on) > (time_to_warn + time_to_delete)
-      @tweggs.remove(user)
+      #@tweggs.remove(user)
       puts "#{user} had their twegg deleted."
     elsif (Time.now - twegg.created_on) > time_to_warn
       puts "#{user} has been warned that their twegg will be removed soon."
@@ -200,7 +202,7 @@ def respond_new_replies
     user = tweet.user.screen_name
     puts "New reply found from @#{user}"
 
-    if tweet.in_reply_to_user_id == @twitter_name
+    if tweet.in_reply_to_user_id == @twitter_id
       tokens = tweet.full_text.split(" ")
       command = tokens[1].downcase
       case command
@@ -245,6 +247,7 @@ def respond_new_replies
           puts "#{user} tried to name their twet but it was already named."
         end
       when 'feed'
+        puts 'In feed block'
         if @twets[user].hungry
           puts "#{user} fed their twet."
           @twets[user].hungry = false
@@ -263,6 +266,28 @@ def respond_new_replies
           puts "#{user} tried to get their status but they don't have a twet."
         end
       when 'relationship' #gives user information about the relationship between them and their twet
+        if twet = @twets[user]
+          case
+          when twet.fondness == 0
+            tweet "@#{user} Wow... #{twet.name} hates your guts!", tweet
+          when twet.fondness < 5
+            tweet "@#{user} #{twet.name } doesn't like you very much.", tweet
+          when twet.fondness == 5
+            tweet "@#{user} #{twet.name } think you're okay.", tweet
+          when twet.fondness < 10
+            tweet "@#{user} #{twet.name } really likes you!", tweet
+          when twet.fondness >= 10
+            tweet "@#{user} #{twet.name } considers you their best friend!", tweet
+          end
+        else
+          puts "#{user} tried to check their relationship but they don't have a twet."
+        end
+      when 'wallet'
+        if twuser = @users[user]
+          tweet "@#{user} You have #{twuser.neocoin} neocoins.", tweet
+        else
+          puts "#{user} tried to check their wallet but they aren't a user."
+        end
       else
         puts "The following tweet from #{user} was not understood: #{tweet.text}"
       end
