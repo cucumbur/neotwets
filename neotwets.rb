@@ -77,6 +77,7 @@ def load_config
     @twitter_name = @twitter_client.user.screen_name
     @twitter_id = @twitter_client.user.id
   rescue Twitter::Error::TooManyRequests => error
+    puts 'Rate limit exceeded, sleeping for some time...'
     sleep error.rate_limit.reset_in + 1
     retry
   end
@@ -198,6 +199,7 @@ def respond_new_replies
   begin
     mentions = @twitter_client.mentions({since_id: @last_seen_tweet, count: 20})
   rescue Twitter::Error::TooManyRequests => error
+    puts 'Rate limit exceeded, sleeping for some time...'
     sleep error.rate_limit.reset_in + 1
     retry
   end
@@ -276,6 +278,7 @@ def respond_new_replies
         end
       when 'relationship' #gives user information about the relationship between them and their twet
         if twet = @twets[user]
+          puts  "#{user} is looking at their relationship with their twet."
           case
           when twet.fondness == 0
             tweet "@#{user} Wow... #{twet.name} hates your guts!", tweet
@@ -299,7 +302,7 @@ def respond_new_replies
         end
           # gambling features
       when 'dice' # @neotwetsdev dice bet (neocoins) on (1-6)
-        if twuser = @users[user] && tokens.size >= 4
+        if (twuser = @users[user]) && tokens.size >= 4
           puts "#{user} is rolling the dice."
           bet = [tokens[3].to_i, twuser.neocoin].min
           twuser.neocoin -= bet
@@ -307,15 +310,15 @@ def respond_new_replies
           roll = rand(6)+1
           if roll == guess
             twuser.neocoin += (bet * 6)
-            tweet "@#{user} You bet on #{guess} and the die landed on #{roll}. You win #{(bet * 5)} neocoin!", tweet
+            tweet "@#{user} You bet on #{guess} and the die landed on #{roll}. You win #{(bet * 5)} neocoin! Now you have #{twuser.neocoin}.", tweet
           else
-            tweet "@#{user} You bet on #{guess} but the die landed on #{roll}. You lost #{(bet)} neocoin...", tweet
+            tweet "@#{user} You bet on #{guess} but the die landed on #{roll}. You lost #{(bet)} neocoin... Now you have #{twuser.neocoin}.", tweet
           end
         else
           puts "#{user} tried to roll the dice but isn't an actual user."
         end
       when 'coinflip' # @neotwetsdev coinflip bet (neocoins) on (heads,tails)
-        if twuser = @users[user] && tokens.size >= 4
+        if (twuser = @users[user]) && tokens.size >= 4
           puts "#{user} is flipping a coin."
           bet = [tokens[3].to_i, twuser.neocoin].min
           twuser.neocoin -= bet
@@ -336,7 +339,8 @@ def respond_new_replies
             puts "#{user} is collecting their allowance."
             given = ALLOWANCE_AMOUNT + rand(-10..10)
             twuser.neocoin += given
-            tweet "@#{user} You collected #{given} nocoin as allowance!", tweet
+            twuser.got_allowance = true
+            tweet "@#{user} You collected #{given} neocoin as allowance!", tweet
           else
             puts "#{user} tried to collect allowance but already got it today."
           end
@@ -349,6 +353,8 @@ def respond_new_replies
       end
       @last_seen_tweet = tweet.id if tweet.id > @last_seen_tweet
     end
+
+    save_database :silent
 
   end
 end
