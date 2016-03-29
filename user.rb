@@ -6,6 +6,6 @@ class User
     @twet = twet_id
     @neocoin = 100
     @playing_since = Time.now
-    @gotten_allowance = false
+    @got_allowance = false
   end
 end

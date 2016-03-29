@@ -137,6 +137,10 @@ def daily_rollover
     puts 'Making all twets hungry.'
     twet.hungry = true
   end
+  @users.each do |name, twuser|
+    # Reset allowance
+    twuser.got_allowance = false
+  end
 end
 
 def check_events
@@ -170,6 +174,11 @@ def check_events
     end
 
   end
+
+  # User checks
+  # @twets.each do |name, user|
+  #
+  # end
 end
 
 def hatch_twegg(twegg)
@@ -322,11 +331,15 @@ def respond_new_replies
           puts "#{user} tried to flip a coin but isn't an actual user."
         end
       when 'allowance'
-        if twuser = @users[user] && !(twuser.gotten_allowance)
-          puts "#{user} is collecting their allowance."
-          given = ALLOWANCE_AMOUNT + rand(-10..10)
-          twuser.neocoin += given
-          tweet "@#{user} You collected #{given} nocoin as allowance!", tweet
+        if twuser = @users[user]
+          if !(twuser.got_allowance)
+            puts "#{user} is collecting their allowance."
+            given = ALLOWANCE_AMOUNT + rand(-10..10)
+            twuser.neocoin += given
+            tweet "@#{user} You collected #{given} nocoin as allowance!", tweet
+          else
+            puts "#{user} tried to collect allowance but already got it today."
+          end
         else
           puts "#{user} tried to collect allowance but aren't a real user."
         end
