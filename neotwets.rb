@@ -298,9 +298,9 @@ def respond_new_replies
           roll = rand(6)+1
           if roll == guess
             twuser.neocoin += (bet * 6)
-            "@#{user} You bet on #{guess} and the die landed on #{roll}. You win #{(bet * 5)} neocoin!", tweet
+            tweet "@#{user} You bet on #{guess} and the die landed on #{roll}. You win #{(bet * 5)} neocoin!", tweet
           else
-            "@#{user} You bet on #{guess} but the die landed on #{roll}. You lost #{(bet)} neocoin...", tweet
+            tweet "@#{user} You bet on #{guess} but the die landed on #{roll}. You lost #{(bet)} neocoin...", tweet
           end
         else
           puts "#{user} tried to roll the dice but isn't an actual user."
@@ -314,9 +314,9 @@ def respond_new_replies
           coin = ['heads', 'tails'].sample
           if guess == coin
             twuser.neocoin += (bet * 2)
-            "@#{user} You bet on #{guess} and the coin landed on #{coin}. You win #{(bet)} neocoin!", tweet
+            tweet "@#{user} You bet on #{guess} and the coin landed on #{coin}. You win #{(bet)} neocoin!", tweet
           else
-            "@#{user} You bet on #{guess} but the coin landed on #{coin}... You lose #{(bet)} neocoin.", tweet
+            tweet "@#{user} You bet on #{guess} but the coin landed on #{coin}... You lose #{(bet)} neocoin.", tweet
           end
         else
           puts "#{user} tried to flip a coin but isn't an actual user."
@@ -326,7 +326,7 @@ def respond_new_replies
           puts "#{user} is collecting their allowance."
           given = ALLOWANCE_AMOUNT + rand(-10..10)
           twuser.neocoin += given
-          "@#{user} You collected #{given} nocoin as allowance!", tweet
+          tweet "@#{user} You collected #{given} nocoin as allowance!", tweet
         else
           puts "#{user} tried to collect allowance but aren't a real user."
         end
