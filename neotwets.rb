@@ -12,7 +12,7 @@ require_relative 'user'
 DEFAULT_CONFIG    = 'config.yaml'
 DEFAULT_WORLD     = 'world.yaml'
 DEFAULT_DATABASE  = 'database.yaml'
-VERSION = '0.1.1'
+VERSION = '0.1.2'
 SLEEP_TIME = 20         # the amount of time, in seconds, to wait in between running the main loop
 CHECK_TWEETS_TIME = 60
 CHECK_EVENT_TIME = 240  # the amount of time, in seconds, to wait in between checking for events to respond to
